@@ -1,0 +1,93 @@
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+  background: #f5f6f8;
+  color: #333;
+}
+
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 24px;
+}
+
+h1 { font-size: 24px; margin-bottom: 4px; }
+.subtitle { color: #888; margin-bottom: 20px; font-size: 14px; }
+
+.upload-box {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  background: #fff;
+  padding: 16px;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+  margin-bottom: 12px;
+}
+
+.upload-box input[type="file"] { flex: 1; min-width: 200px; }
+.upload-box input[type="text"] { flex: 2; min-width: 240px; padding: 8px; border: 1px solid #ddd; border-radius: 4px; }
+
+#upload-btn {
+  padding: 8px 20px;
+  background: #1677ff;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 15px;
+}
+#upload-btn:hover { background: #0958d9; }
+#upload-btn:disabled { background: #aaa; cursor: not-allowed; }
+
+.progress {
+  padding: 12px;
+  background: #fffbe6;
+  border: 1px solid #ffe58f;
+  border-radius: 6px;
+  margin-bottom: 20px;
+  display: none;
+  font-size: 14px;
+}
+
+h2 { font-size: 18px; margin: 24px 0 12px; }
+
+.grid-5, .grid-2 {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.grid-5 { grid-template-columns: repeat(5, 1fr); }
+.grid-2 { grid-template-columns: repeat(2, 1fr); }
+
+figure {
+  background: #fff;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+}
+figure img { width: 100%; display: block; }
+figcaption {
+  padding: 8px;
+  font-size: 12px;
+  color: #666;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+figcaption button, figcaption a {
+  padding: 4px 10px;
+  font-size: 12px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background: #fff;
+  color: #1677ff;
+  cursor: pointer;
+  text-decoration: none;
+}
+figcaption button:hover, figcaption a:hover { border-color: #1677ff; }
+
+.history { background: #fff; border-radius: 8px; padding: 12px; font-size: 13px; color: #888; }
+.history ul { list-style: none; margin-top: 8px; }
+.history li { padding: 4px 0; border-bottom: 1px solid #f0f0f0; }
