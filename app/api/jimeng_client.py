@@ -21,7 +21,7 @@ service.set_host("visual.volcengineapi.com")
 def _submit(req_key: str, body: dict) -> str:
     """提交异步任务,返回 task_id"""
     payload = {"req_key": req_key, **body}
-    resp = service.CVSync2AsyncSubmitTask(payload)
+    resp = service.cv_sync2async_submit_task(payload)
     code = resp.get("code")
     if code != 10000:
         raise RuntimeError(f"即梦提交失败 code={code} msg={resp.get('message')} resp={resp}")
@@ -32,7 +32,7 @@ def _poll(task_id: str, req_key: str, timeout: int = 300, interval: int = 3) -> 
     """轮询任务结果,返回 data(含 image_urls 或 binary_data_base64)"""
     deadline = time.time() + timeout
     while time.time() < deadline:
-        resp = service.CVSync2AsyncGetResult({
+        resp = service.cv_sync2async_get_result({
             "req_key": req_key,
             "task_id": task_id,
         })
