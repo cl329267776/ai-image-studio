@@ -12,8 +12,21 @@ from app.services import postprocess
 
 
 def _b64(path: str) -> str:
-    with open(path, "rb") as f:
-        return base64.b64encode(f.read()).decode()
+    """读图并压缩(最长边≤1024,JPEG q85)后 base64。
+
+    必须压缩:即梦网关对请求体大小有限制,多张手机原图(3072×4096, 2-3MB/张)
+    base64 后总请求体可达 20-30MB,触发 'Error when parsing request'。
+    压缩后单张约 150-300KB,8 张合计 <3MB,稳定通过。
+    """
+    from PIL import Image
+    import io
+    with Image.open(path) as img:
+        img = img.convert("RGB")
+        if max(img.size) > 1024:
+            img.thumbnail((1024, 1024), Image.LANCZOS)
+        buf = io.BytesIO()
+        img.save(buf, format="JPEG", quality=85)
+        return base64.b64encode(buf.getvalue()).decode()
 
 
 def _get_uploads(task: dict) -> list:
@@ -91,7 +104,7 @@ def generate(task: dict, prompts: dict | None = None) -> dict:
             with open(p, "rb") as f:
                 cells.append(f.read())
     while len(cells) < 9:
-        cells.append(cells[0] if cells else _b64(upload_paths[0]).encode())
+        cells.append(cells[0] if cells else open(upload_paths[0], "rb").read())
     cells = cells[:9]
     try:
         grid = postprocess.make_grid(cells)
