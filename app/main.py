@@ -57,11 +57,13 @@ async def save_prompts(body: dict):
 
 
 @app.post("/api/upload")
-async def upload(files: List[UploadFile] = File(...), prompts: str = Form("")):
+async def upload(files: List[UploadFile] = File(...), prompts: str = Form(""),
+                 provider: str = Form("")):
     """上传 1~9 张原图,立即返回 task_id(生成在后台线程跑)
 
     files: 全部原图(作为 AI 参考图)
     prompts: JSON 字符串 {"main": [...], "detail": [...]},留空则用服务器默认
+    provider: "jimeng" | "ark",留空则用 .env 的 API_PROVIDER
     """
     if not files:
         return JSONResponse({"error": "请选择至少一张原图"}, status_code=400)
@@ -80,6 +82,7 @@ async def upload(files: List[UploadFile] = File(...), prompts: str = Form("")):
         task["prompts"] = None
     task["results"] = {}
     task["error"] = ""
+    task["provider"] = provider or config.API_PROVIDER
     TASKS[task["task_id"]] = task
 
     def worker():
@@ -87,7 +90,7 @@ async def upload(files: List[UploadFile] = File(...), prompts: str = Form("")):
             task["status"] = "queued"
             with GENERATE_LOCK:  # 串行:同一时刻只有一个任务在调即梦 API
                 task["status"] = "generating"
-                results = generate.generate(task, task["prompts"])
+                results = generate.generate(task, task["prompts"], task["provider"])
                 task["results"] = results
                 task["status"] = "done" if results["main_images"] or results["detail_images"] else "partial"
                 if results["errors"]:

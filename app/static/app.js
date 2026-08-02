@@ -57,6 +57,7 @@ async function upload() {
   const fd = new FormData();
   for (const f of fileInput.files) fd.append('files', f);
   fd.append('prompts', JSON.stringify(collectPrompts()));
+  fd.append('provider', document.getElementById('provider').value);
   setProgress('上传中…');
   const resp = await fetch('/api/upload', { method: 'POST', body: fd });
   const data = await resp.json();

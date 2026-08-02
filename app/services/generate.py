@@ -40,12 +40,13 @@ def _get_uploads(task: dict) -> list:
     return []
 
 
-def generate(task: dict, prompts: dict | None = None) -> dict:
+def generate(task: dict, prompts: dict | None = None, provider: str | None = None) -> dict:
     """执行完整生成流程,返回结果 dict
     task: save_uploads 返回 dict
     prompts: {"main": [5], "detail": [2]},None 则用服务器默认(prompts.json)
+    provider: "jimeng" | "ark",None 则用 .env 的 API_PROVIDER
     """
-    client = get_client()
+    client = get_client(provider)
     if prompts is None:
         prompts = prompts_mod.load_prompts()
 
@@ -86,13 +87,17 @@ def generate(task: dict, prompts: dict | None = None) -> dict:
         time.sleep(3)
 
     # --- 详情图 ---
-    # 详情图 1:AI 生成 6 区域详情页(图片生成4.6 多参考图,detail[0] 提示词)
-    # 注:竖版 width/height(1024×1536)在免费并发下会卡服务端队列(实测 17min+ 不结束),
-    # 暂用方形 size=1048576(1024²),后处理缩到宽 800;竖版等付费并发后再优化
+    # 详情图 1:AI 生成 6 区域详情页(detail[0] 提示词,多参考图)
+    # 即梦:竖版 width/height 会卡服务端队列(实测),用方形 1024²
+    # 方舟:同步返回不卡队列,用竖版 1024×1536 更符合详情页比例
     d0_prompt = detail_prompts[0] if detail_prompts else ""
     if d0_prompt:
         try:
-            imgs = client.generate_multi(ref_b64s, d0_prompt, n=1)
+            if provider == "ark":
+                imgs = client.generate_multi(ref_b64s, d0_prompt, n=1,
+                                             width=1024, height=1536)
+            else:
+                imgs = client.generate_multi(ref_b64s, d0_prompt, n=1)
             if imgs:
                 d1 = os.path.join(task["detail_dir"], "详情图1_AI详情页.jpg")
                 with open(d1, "wb") as f:
