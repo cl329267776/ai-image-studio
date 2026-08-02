@@ -54,7 +54,7 @@ def _submit(req_key: str, body: dict, retries: int = 8) -> str:
     raise RuntimeError(f"即梦提交重试 {retries} 次仍失败(并发超限)")
 
 
-def _poll(task_id: str, req_key: str, timeout: int = 300, interval: int = 3) -> dict:
+def _poll(task_id: str, req_key: str, timeout: int = 600, interval: int = 3) -> dict:
     """轮询任务结果,返回 data(含 image_urls 或 binary_data_base64)"""
     deadline = time.time() + timeout
     while time.time() < deadline:
