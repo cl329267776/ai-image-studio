@@ -18,12 +18,13 @@ service.set_sk(config.JIMENG_SECRET_KEY)
 service.set_host("visual.volcengineapi.com")
 
 
-def _submit(req_key: str, body: dict, retries: int = 8) -> str:
+def _submit(req_key: str, body: dict, retries: int = 60) -> str:
     """提交异步任务,返回 task_id
 
-    免费试用并发只有 1,多个任务同时跑会撞 50430(并发超限)/50429(QPS 超限),
-    这两个是可重试错误,退避重试。SDK 对非 10000 响应会抛异常(异常消息里带 code),
-    需从异常文本解析 code 判断是否可重试。
+    免费试用并发只有 1:多任务会撞 50430(并发超限)/50429(QPS 超限)。
+    这是「排队中」信号而不是致命错误 —— 服务端队列消化后会自动放行,
+    所以长时重试(默认 60 次 × 10s 间隔 ≈ 10 分钟),期间不判失败。
+    SDK 对非 10000 响应会抛异常(异常消息里带 code),需解析 code 判断。
     """
     payload = {"req_key": req_key, **body}
     for attempt in range(retries):
@@ -37,21 +38,19 @@ def _submit(req_key: str, body: dict, retries: int = 8) -> str:
             m = re.search(r'"code"\s*:\s*(\d+)', msg)
             code = int(m.group(1)) if m else None
             if code in (50430, 50429):
-                wait = 10 * (attempt + 1)
-                print(f"[即梦] 并发/QPS 超限(code={code}),第 {attempt+1}/{retries} 次重试,等待 {wait}s")
-                time.sleep(wait)
+                print(f"[即梦] 并发/QPS 排队中(code={code}),第 {attempt+1}/{retries} 次,等待 10s")
+                time.sleep(10)
                 continue
             raise RuntimeError(f"即梦提交异常(请求被网关拒绝): {msg}")
         code = resp.get("code")
         if code == 10000:
             return resp["data"]["task_id"]
         if code in (50430, 50429):
-            wait = 10 * (attempt + 1)
-            print(f"[即梦] 并发/QPS 超限(code={code}),第 {attempt+1}/{retries} 次重试,等待 {wait}s")
-            time.sleep(wait)
+            print(f"[即梦] 并发/QPS 排队中(code={code}),第 {attempt+1}/{retries} 次,等待 10s")
+            time.sleep(10)
             continue
         raise RuntimeError(f"即梦提交失败 code={code} msg={resp.get('message')} resp={resp}")
-    raise RuntimeError(f"即梦提交重试 {retries} 次仍失败(并发超限)")
+    raise RuntimeError(f"即梦提交等待 {retries*10}s 仍无法进入队列(并发持续被占)")
 
 
 def _poll(task_id: str, req_key: str, timeout: int = 600, interval: int = 3) -> dict:
