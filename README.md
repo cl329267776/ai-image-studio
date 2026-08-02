@@ -47,6 +47,24 @@ cp .env.example .env
 
 浏览器打开 `http://<服务器IP>:8000`。
 
+## 部署实况(2026-08-02,Debian 12 + 宝塔 + systemd)
+
+> 实际部署环境:服务器 192.168.1.41(主机名 msi,Python 3.13.5),宝塔 /www/wwwroot/ai-image-studio。
+> ⚠️ **端口说明**:8000 已被服务器上既有项目 api-football 占用,本项目实际运行在 **8001**。
+> 访问地址:`http://192.168.1.41:8001`。
+
+- 代码来源:GitHub 私有仓库 `cl329267776/ai-image-studio`(git clone)
+- 进程守护:systemd 服务 `ai-image-studio`(User=www,开机自启)
+- 运维命令:
+  ```bash
+  systemctl restart ai-image-studio      # 重启
+  journalctl -u ai-image-studio -f       # 看日志
+  systemctl status ai-image-studio       # 状态
+  ```
+- 防火墙:UFW 已放行 8001/tcp
+- .env 位置:`/www/wwwroot/ai-image-studio/.env`(AK/SK 填入后 `systemctl restart ai-image-studio`)
+- 更新代码:服务器 `/www/wwwroot/ai-image-studio` 内 `git pull`,然后重启服务
+
 ## 配置说明(.env)
 
 | 变量 | 说明 | 必填 |
