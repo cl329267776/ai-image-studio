@@ -22,14 +22,17 @@ class ClientAdapter:
         data = jimeng_client.extract_product(upload_b64, edit_prompt)
         return jimeng_client.decode_result(data)
 
-    def generate_multi(self, ref_b64s: list, prompt: str, n: int = 1):
-        """多参考图生成 n 张,返回 bytes 列表"""
+    def generate_multi(self, ref_b64s: list, prompt: str, n: int = 1,
+                       size: int = 1048576, width: int = 0, height: int = 0):
+        """多参考图生成 n 张,返回 bytes 列表
+        size: 面积(默认 1048576=1024²);width/height: 竖版宽高(详情页用)"""
         if self.provider == "ark":
             return ark_client.generate_multi(ref_b64s, prompt, n=n)
         # jimeng: 每张一次 force_single 调用(并发受限于平台,先串行)
         images = []
         for _ in range(n):
-            data = jimeng_client.generate_multi(ref_b64s, prompt)
+            data = jimeng_client.generate_multi(ref_b64s, prompt, size=size,
+                                                width=width, height=height)
             images.extend(jimeng_client.decode_result(data))
         return images
 
