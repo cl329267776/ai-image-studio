@@ -71,10 +71,11 @@ def generate(task: dict, prompts: dict | None = None) -> dict:
 
     # --- 详情图 ---
     # 详情图 1:AI 生成 6 区域详情页(图片生成4.6 多参考图,detail[0] 提示词)
+    # 竖版宽高 1024×1536(面积 1572864 在合法范围 [1024², 4096²]),后处理缩到宽 800
     d0_prompt = detail_prompts[0] if detail_prompts else ""
     if d0_prompt:
         try:
-            imgs = client.generate_multi(ref_b64s, d0_prompt, n=1)
+            imgs = client.generate_multi(ref_b64s, d0_prompt, n=1, width=1024, height=1536)
             if imgs:
                 d1 = os.path.join(task["detail_dir"], "详情图1_AI详情页.jpg")
                 with open(d1, "wb") as f:

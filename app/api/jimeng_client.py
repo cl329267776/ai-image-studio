@@ -73,15 +73,22 @@ def extract_product(upload_b64: str, edit_prompt: str = "提取日用品") -> di
     return _poll(tid, "jimeng_i2i_extract_tiled_images")
 
 
-def generate_multi(upload_b64s: list, prompt: str, size: int = 1024) -> dict:
+def generate_multi(upload_b64s: list, prompt: str, size: int = 1048576,
+                   width: int = 0, height: int = 0) -> dict:
     """图片生成4.6:多参考图生成。req_key: jimeng_seedream46_cvtob
-    size 默认 4194304(2042²);force_single=true 每次只出 1 张"""
+    size 为面积,合法范围 [1024*1024, 4096*4096](默认 1048576=1024²,1K)
+    传 width/height 时用宽高(宽高积同样须在合法范围,竖版详情页用)
+    force_single=true 每次只出 1 张"""
     body = {
         "binary_data_base64": upload_b64s,
         "prompt": prompt,
-        "size": size,
         "force_single": True,
     }
+    if width and height:
+        body["width"] = width
+        body["height"] = height
+    else:
+        body["size"] = size
     tid = _submit("jimeng_seedream46_cvtob", body)
     return _poll(tid, "jimeng_seedream46_cvtob")
 
