@@ -22,15 +22,26 @@ def _submit(req_key: str, body: dict, retries: int = 5) -> str:
     """提交异步任务,返回 task_id
 
     免费试用并发只有 1,多个任务同时跑会撞 50430(并发超限)/50429(QPS 超限),
-    这两个是可重试错误,退避重试。首次失败即提示等待 10s 后再试。
+    这两个是可重试错误,退避重试。SDK 对非 10000 响应会抛异常(异常消息里带 code),
+    需从异常文本解析 code 判断是否可重试。
     """
     payload = {"req_key": req_key, **body}
     for attempt in range(retries):
+        resp = None
         try:
             resp = service.cv_sync2async_submit_task(payload)
         except Exception as e:
-            # SDK 对非 JSON 响应会抛异常(如 Error when parsing request)
-            raise RuntimeError(f"即梦提交异常(请求被网关拒绝): {e}")
+            msg = str(e)
+            # SDK 抛异常时从消息里解析 code(如 b'{"code":50430,...}')
+            import re
+            m = re.search(r'"code"\s*:\s*(\d+)', msg)
+            code = int(m.group(1)) if m else None
+            if code in (50430, 50429):
+                wait = 10 * (attempt + 1)
+                print(f"[即梦] 并发/QPS 超限(code={code}),第 {attempt+1}/{retries} 次重试,等待 {wait}s")
+                time.sleep(wait)
+                continue
+            raise RuntimeError(f"即梦提交异常(请求被网关拒绝): {msg}")
         code = resp.get("code")
         if code == 10000:
             return resp["data"]["task_id"]
