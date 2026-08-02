@@ -9,20 +9,56 @@
 <body>
   <div class="container">
     <h1>AI 商品图生成工具</h1>
-    <p class="subtitle">上传商品实拍原图,自动生成 5 张 800×800 主图 + 2 张九宫格详情图</p>
+    <p class="subtitle">上传商品实拍原图,自动生成 5 张 800×800 主图 + 1 张 AI 详情页 + 1 张九宫格详情图</p>
 
     <div class="upload-box">
-      <input type="file" id="file" accept="image/*">
-      <input type="text" id="prompt" placeholder="自定义提示词(可选):如「浅灰台面,自然光,高端质感」">
+      <input type="file" id="file" accept="image/*" multiple>
       <button id="upload-btn">开始生成</button>
+      <div class="hint">可多选原图(最多 9 张),全部作为 AI 参考图</div>
     </div>
 
     <div id="progress" class="progress"></div>
 
+    <details class="prompt-panel" open>
+      <summary>提示词管理(每张图独立编辑,保存后生效)</summary>
+      <div class="prompt-list">
+        <div class="prompt-item">
+          <label>主图1 · 搜索引流(白底抠图)</label>
+          <textarea id="prompt-main-0" rows="3"></textarea>
+        </div>
+        <div class="prompt-item">
+          <label>主图2 · 工艺细节</label>
+          <textarea id="prompt-main-1" rows="3"></textarea>
+        </div>
+        <div class="prompt-item">
+          <label>主图3 · 行业适配(九宫格)</label>
+          <textarea id="prompt-main-2" rows="3"></textarea>
+        </div>
+        <div class="prompt-item">
+          <label>主图4 · OEM定制服务</label>
+          <textarea id="prompt-main-3" rows="3"></textarea>
+        </div>
+        <div class="prompt-item">
+          <label>主图5 · 纯白底(无文字)</label>
+          <textarea id="prompt-main-4" rows="3"></textarea>
+        </div>
+        <div class="prompt-item">
+          <label>详情图1 · AI 详情页(6 区域)</label>
+          <textarea id="prompt-detail-0" rows="5"></textarea>
+        </div>
+        <div class="prompt-item">
+          <label>详情图2 · 九宫格拼接(本地生成,提示词仅存档)</label>
+          <textarea id="prompt-detail-1" rows="2"></textarea>
+        </div>
+      </div>
+      <button id="save-prompts-btn">保存提示词</button>
+      <span id="prompt-save-status" class="save-status"></span>
+    </details>
+
     <h2>主图(800×800)</h2>
     <div id="main-images" class="grid-5"></div>
 
-    <h2>详情图(九宫格,宽 800)</h2>
+    <h2>详情图(宽 800)</h2>
     <div id="detail-images" class="grid-2"></div>
 
     <h2>历史任务</h2>

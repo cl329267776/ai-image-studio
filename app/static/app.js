@@ -1,15 +1,66 @@
 const state = { taskId: null, pollTimer: null };
 
+// 提示词 textarea id 与后端字段映射
+const PROMPT_FIELDS = [
+  ['main-0', 'main', 0], ['main-1', 'main', 1], ['main-2', 'main', 2],
+  ['main-3', 'main', 3], ['main-4', 'main', 4],
+  ['detail-0', 'detail', 0], ['detail-1', 'detail', 1],
+];
+
+function collectPrompts() {
+  const prompts = { main: [], detail: [] };
+  PROMPT_FIELDS.forEach(([id, group, idx]) => {
+    const el = document.getElementById('prompt-' + id);
+    prompts[group][idx] = el ? el.value : '';
+  });
+  return prompts;
+}
+
+function fillPrompts(prompts) {
+  PROMPT_FIELDS.forEach(([id, group, idx]) => {
+    const el = document.getElementById('prompt-' + id);
+    if (el && prompts[group] && prompts[group][idx] !== undefined) {
+      el.value = prompts[group][idx];
+    }
+  });
+}
+
+async function loadPrompts() {
+  try {
+    const resp = await fetch('/api/prompts');
+    const data = await resp.json();
+    fillPrompts(data);
+  } catch (e) { /* 忽略,保留默认空值 */ }
+}
+
+async function savePrompts() {
+  const statusEl = document.getElementById('prompt-save-status');
+  statusEl.textContent = '保存中…';
+  try {
+    const resp = await fetch('/api/prompts', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(collectPrompts()),
+    });
+    const data = await resp.json();
+    statusEl.textContent = data.ok ? '✓ 已保存' : ('✗ ' + (data.error || '保存失败'));
+  } catch (e) {
+    statusEl.textContent = '✗ 保存失败';
+  }
+  setTimeout(() => { statusEl.textContent = ''; }, 3000);
+}
+
 async function upload() {
   const fileInput = document.getElementById('file');
-  const promptInput = document.getElementById('prompt');
-  if (!fileInput.files.length) { alert('请选择商品原图'); return; }
+  if (!fileInput.files.length) { alert('请选择商品原图(可多选)'); return; }
+  if (fileInput.files.length > 9) { alert('最多上传 9 张原图'); return; }
   const fd = new FormData();
-  fd.append('file', fileInput.files[0]);
-  fd.append('custom_prompt', promptInput.value);
+  for (const f of fileInput.files) fd.append('files', f);
+  fd.append('prompts', JSON.stringify(collectPrompts()));
   setProgress('上传中…');
   const resp = await fetch('/api/upload', { method: 'POST', body: fd });
   const data = await resp.json();
+  if (data.error) { setProgress('✗ ' + data.error); return; }
   state.taskId = data.task_id;
   startPoll();
 }
@@ -67,4 +118,6 @@ async function loadHistory() {
 function setProgress(text) { document.getElementById('progress').style.display = 'block'; document.getElementById('progress').textContent = text; }
 
 document.getElementById('upload-btn').addEventListener('click', upload);
+document.getElementById('save-prompts-btn').addEventListener('click', savePrompts);
+loadPrompts();
 loadHistory();

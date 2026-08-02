@@ -28,6 +28,7 @@ h1 { font-size: 24px; margin-bottom: 4px; }
 
 .upload-box input[type="file"] { flex: 1; min-width: 200px; }
 .upload-box input[type="text"] { flex: 2; min-width: 240px; padding: 8px; border: 1px solid #ddd; border-radius: 4px; }
+.hint { flex-basis: 100%; font-size: 12px; color: #999; }
 
 #upload-btn {
   padding: 8px 20px;
@@ -91,3 +92,48 @@ figcaption button:hover, figcaption a:hover { border-color: #1677ff; }
 .history { background: #fff; border-radius: 8px; padding: 12px; font-size: 13px; color: #888; }
 .history ul { list-style: none; margin-top: 8px; }
 .history li { padding: 4px 0; border-bottom: 1px solid #f0f0f0; }
+
+/* 提示词管理面板 */
+.prompt-panel {
+  background: #fff;
+  border-radius: 8px;
+  padding: 16px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+  margin-bottom: 12px;
+}
+.prompt-panel summary {
+  cursor: pointer;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 10px;
+}
+.prompt-item { margin-bottom: 10px; }
+.prompt-item label {
+  display: block;
+  font-size: 13px;
+  color: #555;
+  margin-bottom: 4px;
+  font-weight: 500;
+}
+.prompt-item textarea {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 13px;
+  line-height: 1.5;
+  resize: vertical;
+  font-family: inherit;
+}
+.prompt-item textarea:focus { border-color: #1677ff; outline: none; }
+#save-prompts-btn {
+  padding: 6px 16px;
+  background: #fff;
+  color: #1677ff;
+  border: 1px solid #1677ff;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+}
+#save-prompts-btn:hover { background: #e6f4ff; }
+.save-status { margin-left: 10px; font-size: 13px; color: #52c41a; }
