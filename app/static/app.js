@@ -80,7 +80,7 @@ function startPoll() {
 }
 
 function renderProgress(t) {
-  const map = { pending: '排队中…', generating: 'AI 生成中(约 1-3 分钟)…', done: '完成', partial: '部分完成', failed: '失败' };
+  const map = { pending: '排队中…', queued: '排队中(前一个任务完成后自动开始)…', generating: 'AI 生成中(约 1-3 分钟)…', done: '完成', partial: '部分完成', failed: '失败' };
   document.getElementById('progress').style.display = 'block';
   document.getElementById('progress').textContent = map[t.status] || t.status;
   if (t.error) document.getElementById('progress').textContent += ' ⚠ ' + t.error;

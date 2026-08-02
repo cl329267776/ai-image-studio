@@ -20,6 +20,10 @@ app = FastAPI(title="AI 商品图生成工具")
 # 任务状态(内存版,单用户够用;重启丢失可接受)
 TASKS: dict[str, dict] = {}
 
+# 全局串行锁:即梦免费试用并发只有 1,同一时刻只允许一个生成任务跑,
+# 其余任务排队(queued),避免多任务互撞 50430 并发超限
+GENERATE_LOCK = threading.Lock()
+
 app.mount("/static", StaticFiles(directory=os.path.join(config.BASE_DIR, "app/static")), name="static")
 app.mount("/outputs", StaticFiles(directory=config.OUTPUT_DIR), name="outputs")
 
@@ -80,12 +84,14 @@ async def upload(files: List[UploadFile] = File(...), prompts: str = Form("")):
 
     def worker():
         try:
-            task["status"] = "generating"
-            results = generate.generate(task, task["prompts"])
-            task["results"] = results
-            task["status"] = "done" if results["main_images"] or results["detail_images"] else "partial"
-            if results["errors"]:
-                task["error"] = "；".join(results["errors"])
+            task["status"] = "queued"
+            with GENERATE_LOCK:  # 串行:同一时刻只有一个任务在调即梦 API
+                task["status"] = "generating"
+                results = generate.generate(task, task["prompts"])
+                task["results"] = results
+                task["status"] = "done" if results["main_images"] or results["detail_images"] else "partial"
+                if results["errors"]:
+                    task["error"] = "；".join(results["errors"])
         except Exception as e:
             task["status"] = "failed"
             task["error"] = f"{e}\n{traceback.format_exc()}"
