@@ -18,14 +18,29 @@ service.set_sk(config.JIMENG_SECRET_KEY)
 service.set_host("visual.volcengineapi.com")
 
 
-def _submit(req_key: str, body: dict) -> str:
-    """提交异步任务,返回 task_id"""
+def _submit(req_key: str, body: dict, retries: int = 5) -> str:
+    """提交异步任务,返回 task_id
+
+    免费试用并发只有 1,多个任务同时跑会撞 50430(并发超限)/50429(QPS 超限),
+    这两个是可重试错误,退避重试。首次失败即提示等待 10s 后再试。
+    """
     payload = {"req_key": req_key, **body}
-    resp = service.cv_sync2async_submit_task(payload)
-    code = resp.get("code")
-    if code != 10000:
+    for attempt in range(retries):
+        try:
+            resp = service.cv_sync2async_submit_task(payload)
+        except Exception as e:
+            # SDK 对非 JSON 响应会抛异常(如 Error when parsing request)
+            raise RuntimeError(f"即梦提交异常(请求被网关拒绝): {e}")
+        code = resp.get("code")
+        if code == 10000:
+            return resp["data"]["task_id"]
+        if code in (50430, 50429):
+            wait = 10 * (attempt + 1)
+            print(f"[即梦] 并发/QPS 超限(code={code}),第 {attempt+1}/{retries} 次重试,等待 {wait}s")
+            time.sleep(wait)
+            continue
         raise RuntimeError(f"即梦提交失败 code={code} msg={resp.get('message')} resp={resp}")
-    return resp["data"]["task_id"]
+    raise RuntimeError(f"即梦提交重试 {retries} 次仍失败(并发超限)")
 
 
 def _poll(task_id: str, req_key: str, timeout: int = 300, interval: int = 3) -> dict:
