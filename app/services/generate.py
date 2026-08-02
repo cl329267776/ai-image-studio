@@ -5,6 +5,7 @@
 """
 import base64
 import os
+import time
 
 from app.api.factory import get_client
 from app import prompts as prompts_mod
@@ -81,6 +82,8 @@ def generate(task: dict, prompts: dict | None = None) -> dict:
                 results["main_images"].append(fn)
         except Exception as e:
             results["errors"].append(f"主图{i+1}失败: {e}")
+        # 免费并发只有 1:上一张 done 后服务端并发释放有延迟,间隔 3s 降低碰撞
+        time.sleep(3)
 
     # --- 详情图 ---
     # 详情图 1:AI 生成 6 区域详情页(图片生成4.6 多参考图,detail[0] 提示词)

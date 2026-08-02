@@ -18,7 +18,7 @@ service.set_sk(config.JIMENG_SECRET_KEY)
 service.set_host("visual.volcengineapi.com")
 
 
-def _submit(req_key: str, body: dict, retries: int = 5) -> str:
+def _submit(req_key: str, body: dict, retries: int = 8) -> str:
     """提交异步任务,返回 task_id
 
     免费试用并发只有 1,多个任务同时跑会撞 50430(并发超限)/50429(QPS 超限),
