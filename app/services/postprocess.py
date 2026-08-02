@@ -21,6 +21,20 @@ def to_square_800(b: bytes, bg: str = "white") -> bytes:
     return buf.getvalue()
 
 
+def to_width_800(b: bytes, max_height: int = 1200) -> bytes:
+    """等比缩放到宽 800(竖版详情页用),高 ≤ max_height,白底,JPEG"""
+    img = _load(b)
+    if img.width > 800 or img.height > max_height:
+        ratio = min(800 / img.width, max_height / img.height)
+        img = img.resize((max(1, int(img.width * ratio)),
+                          max(1, int(img.height * ratio))), Image.LANCZOS)
+    canvas = Image.new("RGB", (800, img.height), "white")
+    canvas.paste(img, (0, 0))
+    buf = BytesIO()
+    canvas.save(buf, "JPEG", quality=92)
+    return buf.getvalue()
+
+
 def make_grid(cells: list[bytes], cols: int = 3, gap: int = 10,
               max_height: int = 1200) -> bytes:
     """九宫格拼接:最多 9 格,宽 800、高 ≤ max_height 的 JPEG bytes"""

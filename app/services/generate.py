@@ -1,19 +1,14 @@
-"""生成编排:主图 + 详情图"""
+"""生成编排:主图(5 张)+ 详情图(1 AI 详情页 + 1 九宫格)
+
+提示词来源:prompts.json(默认从 ai-images.txt 摘取,页面可独立编辑保存)
+参考图:全部上传原图(multi-reference,即梦图片生成4.6 支持 0-14 张)
+"""
 import base64
 import os
 
 from app.api.factory import get_client
+from app import prompts as prompts_mod
 from app.services import postprocess
-
-# 5 张主图的风格提示词(1688 TO B 纸罐行业,见调研附录)
-# 提示词统一:圆柱形纸罐、真实产品摄影、电商主图、无文字(避免 AI 乱码文字)
-MAIN_PROMPTS = [
-    "纯白色背景的商品摄影图,圆柱形纸罐主体居中,真实质感,电商主图",          # 第1张:白底(商品提取API做,此条备用)
-    "简约商务场景,浅灰台面,自然光,圆柱形纸罐,专业商品摄影,电商主图",          # 第2张:商务场景
-    "深色背景高端质感,侧面光,突出纸罐材质纹理和卷边工艺,真实摄影,电商主图",   # 第3张:材质细节
-    "简洁明亮背景,圆柱形纸罐完整展示,突出可定制印刷罐身,真实摄影,电商主图",   # 第4张:定制展示
-    "45度角展示完整纸罐形态,柔和渐变背景,真实产品摄影,电商主图",              # 第5张:45度
-]
 
 
 def _b64(path: str) -> str:
@@ -21,18 +16,38 @@ def _b64(path: str) -> str:
         return base64.b64encode(f.read()).decode()
 
 
-def generate(task: dict, custom_prompt: str = "") -> dict:
+def _get_uploads(task: dict) -> list:
+    """取上传原图路径列表(兼容多文件 uploads 与旧单文件 upload_path)"""
+    uploads = task.get("uploads")
+    if uploads:
+        return [u["upload_path"] for u in uploads]
+    if task.get("upload_path"):
+        return [task["upload_path"]]
+    return []
+
+
+def generate(task: dict, prompts: dict | None = None) -> dict:
     """执行完整生成流程,返回结果 dict
-    task: Task 3 的 save_upload 返回 dict
+    task: save_uploads 返回 dict
+    prompts: {"main": [5], "detail": [2]},None 则用服务器默认(prompts.json)
     """
     client = get_client()
-    upload_b64 = _b64(task["upload_path"])
+    if prompts is None:
+        prompts = prompts_mod.load_prompts()
+
+    upload_paths = _get_uploads(task)
+    if not upload_paths:
+        return {"main_images": [], "detail_images": [], "errors": ["未找到上传原图"]}
+
+    ref_b64s = [_b64(p) for p in upload_paths]
+    main_prompts = prompts.get("main", [])
+    detail_prompts = prompts.get("detail", [])
     results = {"main_images": [], "detail_images": [], "errors": []}
 
     # --- 主图 ---
-    # 第 1 张:商品提取(白底抠图)→ 直接 800×800
+    # 第 1 张:商品提取(白底抠图,该 API 只收 1 张 → 用第 1 张原图)
     try:
-        imgs = client.extract_product(upload_b64)
+        imgs = client.extract_product(ref_b64s[0])
         if imgs:
             p1 = os.path.join(task["main_dir"], "主图1_白底.jpg")
             with open(p1, "wb") as f:
@@ -41,45 +56,47 @@ def generate(task: dict, custom_prompt: str = "") -> dict:
     except Exception as e:
         results["errors"].append(f"主图1白底失败: {e}")
 
-    # 第 2-5 张:背景替换(4 种风格)
-    prompts = MAIN_PROMPTS[1:] if not custom_prompt else [custom_prompt] * 4
-    for i, p in enumerate(prompts, start=2):
+    # 第 2-5 张:图片生成4.6 多参考图 + 各自独立提示词(缺省用默认第 2-5 条)
+    for i in range(1, 5):
+        p = main_prompts[i] if len(main_prompts) > i else ""
         try:
-            imgs = client.background_replace(upload_b64, p)
+            imgs = client.generate_multi(ref_b64s, p, n=1)
             if imgs:
-                fn = os.path.join(task["main_dir"], f"主图{i}_{p[:6]}.jpg")
+                fn = os.path.join(task["main_dir"], f"主图{i+1}.jpg")
                 with open(fn, "wb") as f:
                     f.write(postprocess.to_square_800(imgs[0]))
                 results["main_images"].append(fn)
         except Exception as e:
-            results["errors"].append(f"主图{i}失败: {e}")
+            results["errors"].append(f"主图{i+1}失败: {e}")
 
-    # --- 详情图(九宫格)---
-    # 素材:白底图 + 4 张风格化主图 + 原图,凑 9 格
+    # --- 详情图 ---
+    # 详情图 1:AI 生成 6 区域详情页(图片生成4.6 多参考图,detail[0] 提示词)
+    d0_prompt = detail_prompts[0] if detail_prompts else ""
+    if d0_prompt:
+        try:
+            imgs = client.generate_multi(ref_b64s, d0_prompt, n=1)
+            if imgs:
+                d1 = os.path.join(task["detail_dir"], "详情图1_AI详情页.jpg")
+                with open(d1, "wb") as f:
+                    f.write(postprocess.to_width_800(imgs[0]))
+                results["detail_images"].append(d1)
+        except Exception as e:
+            results["errors"].append(f"详情图1失败: {e}")
+
+    # 详情图 2:本地 Pillow 九宫格(素材:白底图 + 风格化主图,凑 9 格)
     cells = []
     if results["main_images"]:
         for p in results["main_images"]:
             with open(p, "rb") as f:
                 cells.append(f.read())
     while len(cells) < 9:
-        cells.append(cells[0] if cells else upload_b64.encode())
+        cells.append(cells[0] if cells else _b64(upload_paths[0]).encode())
     cells = cells[:9]
     try:
         grid = postprocess.make_grid(cells)
-        d1 = os.path.join(task["detail_dir"], "详情图1_九宫格.jpg")
-        with open(d1, "wb") as f:
-            f.write(grid)
-        results["detail_images"].append(d1)
-    except Exception as e:
-        results["errors"].append(f"详情图1失败: {e}")
-
-    # 第 2 张详情图:换一种排列(不同顺序)
-    try:
-        cells2 = cells[1:] + cells[:1]
-        grid2 = postprocess.make_grid(cells2)
         d2 = os.path.join(task["detail_dir"], "详情图2_九宫格.jpg")
         with open(d2, "wb") as f:
-            f.write(grid2)
+            f.write(grid)
         results["detail_images"].append(d2)
     except Exception as e:
         results["errors"].append(f"详情图2失败: {e}")
